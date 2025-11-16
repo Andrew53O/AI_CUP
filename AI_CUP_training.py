@@ -59,7 +59,7 @@ def move_patients(start, end, split):
             if not fname.endswith(".txt"):
                 continue
 
-            label_pth = os.path.join(lbl_dir, fname)
+            label_path = os.path.join(lbl_dir, fname)
             base, _ = os.path.splitext(fname)  # 取出檔名不含副檔名
             img_path = os.path.join(img_dir, base + ".png")
             if not os.path.exists(img_path):
@@ -83,7 +83,7 @@ from ultralytics import YOLO
 # to access model trained call YOLO('best.pt')
 model = YOLO('yolo12n') #初次訓練使用YOLO官方的預訓練模型，如要使用自己的模型訓練可以將'yolo12n.pt'替換掉
 results = model.train(data="./aortic_valve_colab.yaml",
-            epochs=20, #跑幾個epoch
+            epochs=70, #跑幾個epoch
             batch=16, #batch_size
             imgsz=640, #圖片大小640*640
             device=0 #使用GPU進行訓練
