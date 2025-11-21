@@ -469,7 +469,7 @@ class BaseTrainer:
             LOGGER.info(f"\n{epoch - self.start_epoch + 1} epochs completed in {seconds / 3600:.3f} hours.")
             self.final_eval()
             if self.args.plots:
-                self.plots()
+                self.plot_metrics()
             self.run_callbacks("on_train_end")
         self._clear_memory()
         self.run_callbacks("teardown")
