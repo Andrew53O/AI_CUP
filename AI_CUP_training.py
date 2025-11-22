@@ -81,11 +81,12 @@ print("完成移動！")
 from ultralytics import YOLO
 #模型參數參考網址:https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/default.yaml
 # to access model trained call YOLO('best.pt')
-model = YOLO('yolo12n') #初次訓練使用YOLO官方的預訓練模型，如要使用自己的模型訓練可以將'yolo12n.pt'替換掉
+model = YOLO('yolo12n.pt') #初次訓練使用YOLO官方的預訓練模型，如要使用自己的模型訓練可以將'yolo12n.pt'替換掉
 results = model.train(data="./aortic_valve_colab.yaml",
-            epochs=70, #跑幾個epoch
+            epochs=60, #跑幾個epoch
             batch=16, #batch_size
-            imgsz=640, #圖片大小640*640
-            device=0 #使用GPU進行訓練
+            imgsz=1024, #圖片大小640*640
+            device=0, #
+            patience=10
             )
 
