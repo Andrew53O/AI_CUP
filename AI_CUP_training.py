@@ -70,23 +70,40 @@ def move_patients(start, end, split):
             shutil.copy2(label_path, f"./datasets/{split}/labels/")
 
 # patient0001~0030 → train
-move_patients(1, 30, "train")
+move_patients(1, 40, "train")
 
 # patient0031~0050 → val
-move_patients(31, 50, "val")
+move_patients(41, 50, "val")
 
 print("完成移動！")
 
 
+
 from ultralytics import YOLO
+from ultralytics.utils import metrics
+import numpy as np 
+
+
+def custom_fitness(self):
+    """
+    Custom fitness function that select best.pt 100% by mAP50 for the purpose of the competition
+    """
+    w = [0.0, 0.0, 1.0, 0.0]
+    return (np.array(self.mean_results()) * w).sum()
+
+
+metrics.Metric.fitness = custom_fitness
+print("Use mAP50 ")
+
+
 #模型參數參考網址:https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/default.yaml
 # to access model trained call YOLO('best.pt')
-model = YOLO('yolo12n.pt') #初次訓練使用YOLO官方的預訓練模型，如要使用自己的模型訓練可以將'yolo12n.pt'替換掉
+model = YOLO('yolo12m.pt') #初次訓練使用YOLO官方的預訓練模型，如要使用自己的模型訓練可以將'yolo12n.pt'替換掉
 results = model.train(data="./aortic_valve_colab.yaml",
-            epochs=60, #跑幾個epoch
+            epochs=80, #跑幾個epoch
             batch=16, #batch_size
-            imgsz=1024, #圖片大小640*640
+            imgsz=640, #圖片大小640*640
             device=0, #
-            patience=10
+            patience=20
             )
 
