@@ -91,6 +91,27 @@ def custom_fitness(self):
     w = [0.0, 0.0, 1.0, 0.0]
     return (np.array(self.mean_results()) * w).sum()
 
+# Save best.pt accurary to best_metrics.txt
+def save_best_metrics(trainer):
+    # metrics from final_eval(best.pt); keys like:
+    # 'metrics/precision(B)', 'metrics/recall(B)',
+    # 'metrics/mAP50(B)', 'metrics/mAP50-95(B)'
+    metrics = getattr(trainer, "metrics", None)
+    if not metrics:
+        print("No metrics found on trainer; skipping best_metrics save.")
+        return
+
+    save_path = Path(trainer.save_dir) / "best_metrics.txt"
+    with open(save_path, "w") as f:
+        f.write("BEST.PT FINAL METRICS\n")
+        for k in ["metrics/precision(B)",
+                  "metrics/recall(B)",
+                  "metrics/mAP50(B)",
+                  "metrics/mAP50-95(B)"]:
+            if k in metrics:
+                f.write(f"{k}: {metrics[k]:.4f}\n")
+
+    print(f"Saved best.pt metrics to {save_path}")
 
 metrics.Metric.fitness = custom_fitness
 print("Use mAP50 ")
@@ -99,6 +120,8 @@ print("Use mAP50 ")
 #模型參數參考網址:https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/default.yaml
 # to access model trained call YOLO('best.pt')
 model = YOLO('yolo12m.pt') #初次訓練使用YOLO官方的預訓練模型，如要使用自己的模型訓練可以將'yolo12n.pt'替換掉
+model.add_callback("on_fit_end", save_best_metrics)
+
 results = model.train(data="./aortic_valve_colab.yaml",
             epochs=80, #跑幾個epoch
             batch=16, #batch_size
@@ -106,4 +129,6 @@ results = model.train(data="./aortic_valve_colab.yaml",
             device=0, #
             patience=20
             )
+
+
 
