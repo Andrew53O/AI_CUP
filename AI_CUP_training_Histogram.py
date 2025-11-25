@@ -11,6 +11,9 @@ ultralytics.checks()
 #下載資料集
 import os
 import shutil
+import cv2
+import numpy as np
+
 
 # Upload training_image.zip, training_label.zip, aortic_valve_colab.yaml and put it in /content/
 
@@ -47,6 +50,31 @@ ensure_clean_dir("./datasets/train/labels")
 ensure_clean_dir("./datasets/val/images")
 ensure_clean_dir("./datasets/val/labels")
 
+def save_equalized_image(src_path, dst_path, method="clahe"):
+    """
+    Read grayscale CT image, apply histogram equalization,
+    and save as 3-channel PNG for YOLO.
+    method: "clahe" or "global"
+    """
+    img = cv2.imread(src_path, cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        print(f"[WARN] Cannot read image: {src_path}")
+        return
+
+    if method == "clahe":
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        eq = clahe.apply(img)
+    else:
+        eq = cv2.equalizeHist(img)
+
+    # Convert grayscale → 3-channel RGB (YOLO requires 3 channels)
+    eq_rgb = cv2.cvtColor(eq, cv2.COLOR_GRAY2BGR)
+
+    os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+    cv2.imwrite(dst_path, eq_rgb)
+
+
+
 def move_patients(start, end, split):
     for i in range(start, end + 1):
         patient = f"patient{i:04d}"
@@ -60,14 +88,26 @@ def move_patients(start, end, split):
                 continue
 
             label_path = os.path.join(lbl_dir, fname)
-            base, _ = os.path.splitext(fname)  # 取出檔名不含副檔名
+            base, _ = os.path.splitext(fname)
             img_path = os.path.join(img_dir, base + ".png")
             if not os.path.exists(img_path):
                 print(f"找不到對應圖片: {img_path}")
                 continue
 
-            shutil.copy2(img_path, f"./datasets/{split}/images/")
-            shutil.copy2(label_path, f"./datasets/{split}/labels/")
+            # ---------------------------
+            # NEW: equalize the image here
+            # ---------------------------
+            dst_img_dir = f"./datasets/{split}/images"
+            dst_lbl_dir = f"./datasets/{split}/labels"
+            os.makedirs(dst_img_dir, exist_ok=True)
+            os.makedirs(dst_lbl_dir, exist_ok=True)
+
+            dst_img_path = os.path.join(dst_img_dir, os.path.basename(img_path))
+            save_equalized_image(img_path, dst_img_path, method="clahe")  # or "global"
+
+            # Labels: still a normal copy
+            shutil.copy2(label_path, dst_lbl_dir)
+
 
 # patient0001~0030 → train
 move_patients(1, 40, "train")
@@ -122,12 +162,25 @@ print("Use mAP50 ")
 model = YOLO('yolo12m.pt') #初次訓練使用YOLO官方的預訓練模型，如要使用自己的模型訓練可以將'yolo12n.pt'替換掉
 model.add_callback("on_train_end", save_best_metrics)
 
+import albumentations as A
+
+# Custom histogram equalization (CLAHE) for grayscale CT
+clahe_transforms = [
+    A.CLAHE(
+        clip_limit=4.0,         # contrast strength (tune it if needed)
+        tile_grid_size=(8, 8),  # local region size
+        p=1.0                   # 1.0 = always apply; use 0.5 if you want it 50% of the time
+    ),
+    # (optional) You can add more augmentations here later, e.g. rotations, noise, etc.
+]
+
+
 results = model.train(data="./aortic_valve_colab.yaml",
-            epochs=80, #跑幾個epoch
+            epochs=150, #跑幾個epoch
             batch=16, #batch_size
             imgsz=640, #圖片大小640*640
             device=0, #
-            patience=20
+            patience=40
             )
 
 

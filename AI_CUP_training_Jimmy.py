@@ -119,8 +119,8 @@ print("Use mAP50 ")
 
 #模型參數參考網址:https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/default.yaml
 # to access model trained call YOLO('best.pt')
-model = YOLO('yolo12m.pt') #初次訓練使用YOLO官方的預訓練模型，如要使用自己的模型訓練可以將'yolo12n.pt'替換掉
-model.add_callback("on_train_end", save_best_metrics)
+model = YOLO('yolo12.yaml') #初次訓練使用YOLO官方的預訓練模型，如要使用自己的模型訓練可以將'yolo12n.pt'替換掉
+model.add_callback("on_fit_end", save_best_metrics)
 
 results = model.train(data="./aortic_valve_colab.yaml",
             epochs=80, #跑幾個epoch
