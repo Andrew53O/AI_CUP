@@ -128,7 +128,7 @@ torch.cuda.empty_cache()
 # 預測後半圖片(執行時間3分鐘)
 from ultralytics import YOLO
 #模型參數參考網址:https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/default.yaml
-model = YOLO('./best.pt')
+model = YOLO('./best33.pt')
 results = model.predict(source="./datasets/test/images2/",
               save=True,
               imgsz=640,
