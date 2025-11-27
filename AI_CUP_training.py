@@ -11,6 +11,7 @@ ultralytics.checks()
 #下載資料集
 import os
 import shutil
+from pathlib import Path
 
 # Upload training_image.zip, training_label.zip, aortic_valve_colab.yaml and put it in /content/
 
@@ -123,7 +124,7 @@ model = YOLO('yolo12m.pt') #初次訓練使用YOLO官方的預訓練模型，如
 model.add_callback("on_train_end", save_best_metrics)
 
 results = model.train(data="./aortic_valve_colab.yaml",
-            epochs=80, #跑幾個epoch
+            epochs=5, #跑幾個epoch
             batch=16, #batch_size
             imgsz=640, #圖片大小640*640
             device=0, #
