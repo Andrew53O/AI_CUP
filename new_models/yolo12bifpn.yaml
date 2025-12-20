@@ -1,0 +1,40 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# YOLO12 + ConvNeXt-Tiny backbone + BiFPN neck (P3/8, P4/16, P5/32)
+
+nc: 80  # change to 1 for AI-CUP if needed
+
+scales:
+  # [depth, width, max_channels]
+  n: [0.50, 1.00, 512] # model n equal to model m  [0.50, 0.25, 1024]
+  s: [0.50, 0.50, 1024]
+  m: [0.50, 1.00, 512]
+  l: [1.00, 1.00, 512]
+  x: [1.00, 1.50, 512]
+
+backbone:
+  # 0: ConvNeXt-Tiny from TorchVision, truncated two stages
+  - [-1, 1, TorchVision, [768, "convnext_tiny", "DEFAULT", True, 2, True]]
+
+head:
+  # ----- pull P3, P4, P5 from ConvNeXt -----
+  - [0, 1, Index, [192, 4]]     # 1: P3_raw, stride ~8
+  - [0, 1, Index, [384, 6]]     # 2: P4_raw, stride ~16
+  - [0, 1, Index, [768, 8]]     # 3: P5_raw, stride ~32
+
+  # ----- unify channels to 256 for BiFPN -----
+  - [1, 1, Conv, [256, 1, 1]]   # 4: P3_in (256 ch)
+  - [2, 1, Conv, [256, 1, 1]]   # 5: P4_in (256 ch)
+  - [3, 1, Conv, [256, 1, 1]]   # 6: P5_in (256 ch)
+
+  # ----- BiFPN neck (takes [P3_in, P4_in, P5_in] and returns list of 3 fused maps) -----
+  - [[4, 5, 6], 1, BiFPN, [256]]  # 7: BiFPN([P3,P4,P5]) -> [P3_bi, P4_bi, P5_bi]
+
+  # ----- split BiFPN outputs back into three tensors -----
+  # Index args pattern follows your existing use: [out_channels, index]
+  - [7, 1, Index, [256, 0]]     # 8: P3_bi
+  - [7, 1, Index, [256, 1]]     # 9: P4_bi
+  - [7, 1, Index, [256, 2]]     # 10: P5_bi
+
+  # ----- standard YOLO Detect head -----
+  - [[8, 9, 10], 1, Detect, [nc]]

@@ -1,5 +1,13 @@
 training_image/
 training_label/
 datasets/
+datasets_cls/
 runs/
+
+predict_txt/
+
 TODO.txt
+*.pt
+*.zip
+__pycache__/
+*.pyc

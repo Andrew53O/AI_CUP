@@ -1,0 +1,50 @@
+# Ultralytics 🚀 YOLO12 + ConvNeXt-Tiny + BiFPN + CBAM
+
+nc: 1  # AI CUP aortic valve -> 1 class
+
+scales:
+  # [depth, width, max_channels]
+  # make 'n' behave like YOLO12m so channels match BiFPN (width=1.0)
+  n: [0.50, 1.00, 512]
+  m: [0.50, 1.00, 512]
+  l: [1.00, 1.00, 512]
+  x: [1.00, 1.50, 512]
+
+# ---------------- Backbone (ConvNeXt-Tiny) ----------------
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, TorchVision, [768, "convnext_tiny", "DEFAULT", True, 2, True]]
+
+# ---------------- Neck + Head (BiFPN + CBAM + Detect) ----------------
+head:
+  # 1) take multi-scale features from ConvNeXt
+  # Index module selects specific channels from the input tensor
+  # Parameters: [192, 4]
+  #   - 192: Number of output channels to select
+  #   - 4: Selection index or indexing operation mode
+  # Input: Tensor from P3_raw (stride ~8)
+  # Output: Indexed tensor with 192 channels for downstream processing
+  - [0, 1, Index, [192, 4]]     # 1: P3_raw, stride ~8
+  - [0, 1, Index, [384, 6]]     # 2: P4_raw, stride ~16
+  - [0, 1, Index, [768, 8]]     # 3: P5_raw, stride ~32
+
+  # 2) unify channels to 256 for BiFPN
+  - [1, 1, Conv, [256, 1, 1]]   # 4: P3_in (256c)
+  - [2, 1, Conv, [256, 1, 1]]   # 5: P4_in (256c)
+  - [3, 1, Conv, [256, 1, 1]]   # 6: P5_in (256c)
+
+  # 3) BiFPN neck (takes [P3_in, P4_in, P5_in])
+  - [[4, 5, 6], 1, BiFPN, [256]]   # 7: [P3_bi, P4_bi, P5_bi]
+
+  # 4) split BiFPN outputs into 3 tensors
+  - [7, 1, Index, [256, 0]]     # 8: P3_bi
+  - [7, 1, Index, [256, 1]]     # 9: P4_bi
+  - [7, 1, Index, [256, 2]]     # 10: P5_bi
+
+  # 5) CBAM attention on each scale
+  - [8, 1, CBAM, [256]]         # 11: P3_att
+  - [9, 1, CBAM, [256]]         # 12: P4_att
+  - [10, 1, CBAM, [256]]        # 13: P5_att
+
+  # 6) final YOLO Detect head
+  - [[11, 12, 13], 1, Detect, [nc]]

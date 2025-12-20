@@ -50,25 +50,40 @@ ensure_clean_dir("./datasets/val/labels")
 
 def move_patients(start, end, split):
     for i in range(start, end + 1):
+        unlabeled = []
         patient = f"patient{i:04d}"
         img_dir = os.path.join(IMG_ROOT, patient)
         lbl_dir = os.path.join(LBL_ROOT, patient)
-        if not os.path.isdir(lbl_dir):
+        print("i=",i)
+        if not os.path.isdir(img_dir):
             continue
 
-        for fname in os.listdir(lbl_dir):
-            if not fname.endswith(".txt"):
+        for fname in os.listdir(img_dir):
+            is_label_exist = True
+            if not fname.endswith(".png"):
                 continue
 
-            label_path = os.path.join(lbl_dir, fname)
+            img_path = os.path.join(img_dir, fname)
             base, _ = os.path.splitext(fname)  # 取出檔名不含副檔名
-            img_path = os.path.join(img_dir, base + ".png")
-            if not os.path.exists(img_path):
-                print(f"找不到對應圖片: {img_path}")
-                continue
+            label_path = os.path.join(lbl_dir, base + ".txt")
+            
+            if not os.path.exists(label_path):
+                is_label_exist = False
 
+            if is_label_exist:
+                shutil.copy2(img_path, f"./datasets/{split}/images/")
+                shutil.copy2(label_path, f"./datasets/{split}/labels/")
+            else:
+                unlabeled.append(base)
+        
+        unlabeled.sort()
+        # print(unlabeled)
+        
+        step = len(unlabeled)//10
+        for j in range(0, len(unlabeled), step):
+            img_path = os.path.join(img_dir, unlabeled[j] + ".png")
             shutil.copy2(img_path, f"./datasets/{split}/images/")
-            shutil.copy2(label_path, f"./datasets/{split}/labels/")
+            open(f"./datasets/{split}/labels/{unlabeled[j]}.txt", "w").close()  # create empty label file
 
 # patient0001~0030 → train
 move_patients(1, 40, "train")
@@ -120,15 +135,15 @@ print("Use mAP50 ")
 
 #模型參數參考網址:https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/default.yaml
 # to access model trained call YOLO('best.pt')
-model = YOLO('yolo12m.pt') #初次訓練使用YOLO官方的預訓練模型，如要使用自己的模型訓練可以將'yolo12n.pt'替換掉
+model = YOLO('new_models/yolo12CBC.yaml') #初次訓練使用YOLO官方的預訓練模型，如要使用自己的模型訓練可以將'yolo12n.pt'替換掉
 model.add_callback("on_train_end", save_best_metrics)
 
 results = model.train(data="./aortic_valve_colab.yaml",
-            epochs=5, #跑幾個epoch
+            epochs=80, #跑幾個epoch
             batch=16, #batch_size
             imgsz=640, #圖片大小640*640
             device=0, #
-            patience=20
+            patience=30
             )
 
 
